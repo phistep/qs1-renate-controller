@@ -5,6 +5,7 @@
   TODO
   - fix midi channel, volume updates, ...
   - set custom name
+  - button mode: toggle/immediate enum
 */
 
 #include "MIDIUSB.h"
@@ -19,22 +20,35 @@ const byte MIDI_MAX = 127;
 // buttons
 const int NUM_BUTTONS = 5;
 const int button_pin[NUM_BUTTONS] = {7, 14, 15, 16, 18};
-int button_value[NUM_BUTTONS] = {};
-int button_prev_value[NUM_BUTTONS] = {};
-unsigned long last_debounce_time[NUM_BUTTONS] = {0};
-const unsigned long DEBOUNCE_DELAY = 50; // ms
+const int button_cc[NUM_BUTTONS] = {7, 14, 15, 16, 18};
+const bool button_toggle[NUM_BUTTONS] = {
+    false,  // 7
+    true, // 14
+    true, // 15
+    false,  // 16
+    false  // 18
+};
+
 const byte PIN_BUTTON_UP = HIGH;
 const byte PIN_BUTTON_DOWN = LOW;
+const unsigned long DEBOUNCE_DELAY = 50; // ms
+
+unsigned long button_last_change[NUM_BUTTONS] = {0};
+int button_prev_value[NUM_BUTTONS] = {};
+int toggle_prev_value[NUM_BUTTONS] = {};
 
 // potentiometers
 const int NUM_POTS = 6;
 const int pot_pin[NUM_POTS] = {A2, A3, A6, A7, A8, A9};
+const int pot_cc[NUM_POTS] = {102, 103, 106, 107, 108, 109};
+
 const int POT_MIN = 0;
 const int POT_MAX = 1023;
-int pot_prev_value[NUM_POTS] = {POT_MIN};
-unsigned long pot_last_change[NUM_POTS] = {0}; // ms
 const int POT_TIMEOUT = 300; // ms
 const int POT_THRESHOLD = 20; // /1024
+
+unsigned long pot_last_change[NUM_POTS] = {0}; // ms
+int pot_prev_value[NUM_POTS] = {POT_MIN};
 int midi_prev_value[NUM_POTS] = {MIDI_MIN};
 
 
@@ -45,21 +59,59 @@ void controlChange(byte channel, byte control, byte value) {
 
 
 void updateButton(int pin, int cc, int channel = MIDI_CHANNEL) {
-    button_value[pin] = digitalRead(pin);
-    if ((millis() - last_debounce_time[pin]) > DEBOUNCE_DELAY) {
-      if (button_prev_value[pin] != button_value[pin]) {
-        last_debounce_time[cc] = millis();
-        int value = (button_value[pin] == PIN_BUTTON_DOWN) ? MIDI_BUTTON_DOWN : MIDI_BUTTON_UP;
-        controlChange(channel, cc, value);
-        button_prev_value[pin] = button_value[pin];
+    int value = digitalRead(pin);
+    int midi_value = (value == PIN_BUTTON_DOWN) ? MIDI_BUTTON_DOWN : MIDI_BUTTON_UP;
+
+    if ((millis() - button_last_change[pin]) > DEBOUNCE_DELAY) {
+      if (value != button_prev_value[pin]) {
+        controlChange(channel, cc, midi_value);
+        button_last_change[pin] = millis();
+        button_prev_value[pin] = value;
       }
     }
 
     char buff[80];
     sprintf(
       buff, "P%02i=%4s #%2i=%03i  |  ",
-      pin, (button_value[pin] == PIN_BUTTON_DOWN) ? "DOWN": "UP",
-      cc, (button_value[pin] == PIN_BUTTON_DOWN) ? MIDI_BUTTON_DOWN : MIDI_BUTTON_UP
+      pin, (value == PIN_BUTTON_DOWN) ? "DOWN": "UP",
+      cc, midi_value
+    );
+    Serial.print(buff);
+}
+
+
+void updateToggle(int pin, int cc, int channel = MIDI_CHANNEL) {
+    int value = digitalRead(pin);
+    int midi_value = (value == PIN_BUTTON_DOWN) ? MIDI_BUTTON_DOWN : MIDI_BUTTON_UP;
+
+    char change[] = " ";
+    if ((millis() - button_last_change[pin]) > DEBOUNCE_DELAY) {
+        if (value != button_prev_value[pin]) {
+            if (toggle_prev_value[pin] == PIN_BUTTON_UP) {
+                if (value == PIN_BUTTON_DOWN) {
+                    controlChange(channel, cc, toggle_prev_value[pin]);
+                    toggle_prev_value[pin] = PIN_BUTTON_DOWN;
+                    button_last_change[pin] = millis();
+                    *change = 'C';
+                }
+            } else {
+                if (value == PIN_BUTTON_DOWN) {
+                    controlChange(channel, cc, toggle_prev_value[pin]);
+                    toggle_prev_value[pin] = PIN_BUTTON_UP;
+                    button_last_change[pin] = millis();
+                    *change = 'C';
+                }
+            }
+            button_prev_value[pin] = value;
+        }
+    }
+
+    char buff[80];
+    sprintf(
+      buff, "P%02i=%4s T%s #%2i=%03i  |  ",
+      pin, (value == PIN_BUTTON_DOWN) ? "DOWN": "UP",
+      change,
+      cc, midi_value
     );
     Serial.print(buff);
 }
@@ -112,13 +164,15 @@ void setup() {
 
 void loop() {
   for (int i = 0; i < NUM_BUTTONS; i++) {
-    int pin = button_pin[i];
-    updateButton(pin, pin);
+    if (button_toggle[i]) {
+      updateToggle(button_pin[i], button_cc[i]);
+    } else {
+      updateButton(button_pin[i], button_cc[i]);
+    }
   }
 
   for (int i = 0; i < NUM_POTS; i++) {
-    int pin = pot_pin[i];
-    updatePotentiometer(pin, pin);
+    updatePotentiometer(pot_pin[i], pot_cc[i]);
   }
 
   Serial.println();
