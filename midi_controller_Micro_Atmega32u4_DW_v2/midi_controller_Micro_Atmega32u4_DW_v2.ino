@@ -4,28 +4,18 @@
 
   This code is only for Arduinos that use ATmega32u4 (like Micro, Pro Micro, Leonardo...)
   Remember to also assign the correct board in the IDE (like Tools / Boards / Sparkfun AVR / Pro Micro...)
-
 */
 
-// Change any fields with //**
-
-
-// LIBRARY
-
-#include "MIDIUSB.h"  
+#include "MIDIUSB.h"
 
 // BUTTONS
 const int NButtons = 4; //***  total number of buttons
 const int buttonPin[NButtons] = {2, 3, 5, 7}; //*** define Digital Pins connected from Buttons to Arduino; (ie {10, 16, 14, 15, 6, 7, 8, 9, 2, 3, 4, 5}; 12 buttons)
-                                            
 int buttonCState[NButtons] = {};        // stores the button current value
 int buttonPState[NButtons] = {};        // stores the button previous value
-
-      
 // debounce
 unsigned long lastDebounceTime[NButtons] = {0};  // the last time the output pin was toggled
 unsigned long debounceDelay = 50;    //** the debounce time; increase if the output flickers
-
 
 // POTENTIOMETERS
 const int NPots = 8; //*** total number of pots (knobs and faders)
@@ -43,78 +33,50 @@ boolean potMoving = true; // If the potentiometer is moving
 unsigned long PTime[NPots] = {0}; // Previously stored time; delete 0 if 0 pots
 unsigned long timer[NPots] = {0}; // Stores the time that has elapsed since the timer was reset; delete 0 if 0 pots
 
-
-// MIDI Assignments 
+// MIDI Assignments
 byte midiCh = 1; //* MIDI channel to be used
 byte note = 36; //* Lowest note to be used; 36 = C2; 60 = Middle C
 byte cc = 0; //* Lowest MIDI CC to be used
 
 
-// SETUP
-void setup() {
-
-  // Baud Rate
-  // 31250 for MIDI class compliant | 115200 for Hairless MIDI
-
-  // Buttons
-  // Initialize buttons with pull up resistors
-  for (int i = 0; i < NButtons; i++) {
-    pinMode(buttonPin[i], INPUT_PULLUP);
-  }
-
+// Arduino MIDI functions MIDIUSB Library
+void noteOn(byte channel, byte pitch, byte velocity) {
+  midiEventPacket_t noteOn = {0x09, 0x90 | channel, pitch, velocity};
+  MidiUSB.sendMIDI(noteOn);
 }
 
-////
-// LOOP
-void loop() {
-
-  potentiometers(A9,0);
-  potentiometers(A8,1);
-  potentiometers(A7,2);
-  buttons(2, 36);
+void noteOff(byte channel, byte pitch, byte velocity) {
+  midiEventPacket_t noteOff = {0x08, 0x80 | channel, pitch, velocity};
+  MidiUSB.sendMIDI(noteOff);
 }
 
-////
-// BUTTONS
+void controlChange(byte channel, byte control, byte value) {
+  midiEventPacket_t event = {0x0B, 0xB0 | channel, control, value};
+  MidiUSB.sendMIDI(event);
+}
+
+
 void buttons(int input, int channel) {
-
-
     buttonCState[channel] = digitalRead(input);  // read pins from arduino
-
     if ((millis() - lastDebounceTime[channel]) > debounceDelay) {
-
       if (buttonPState[channel] != buttonCState[channel]) {
         lastDebounceTime[channel] = millis();
 
         if (buttonCState[channel] == LOW) {
-
-          // Sends the MIDI note ON 
-          
-         // use if using with ATmega32U4 (micro, pro micro, leonardo...)
+          // Sends the MIDI note ON
           noteOn(midiCh, channel, 127);  // channel, note, velocity
           MidiUSB.flush();
-
-
-        }
-        else {
-
+        } else {
           // Sends the MIDI note OFF accordingly to the chosen board
-
-          // use if using with ATmega32U4 (micro, pro micro, leonardo...)
           noteOn(midiCh, channel, 0);  // channel, note, velocity
           MidiUSB.flush();
-
         }
         buttonPState[channel] = buttonCState[channel];
       }
     }
-
 }
 
-////
-// POTENTIOMETERS
 void potentiometers(int input, int channel) {
-
     int potAvg = 0;
     for ( int j = 0; j < 10; j++){
        potAvg += analogRead(input); // reads the pins from arduino
@@ -140,8 +102,7 @@ void potentiometers(int input, int channel) {
 
     if (potMoving == true) { // If the potentiometer is still moving, send the change control
       if (midiPState[channel] != midiCState[channel]) {
-
-        // Sends  MIDI CC 
+        // Sends  MIDI CC
         // Use if using with ATmega32U4 (micro, pro micro, leonardo...)
         controlChange(midiCh, channel, midiCState[channel]); //  (channel, CC number,  CC value)
         MidiUSB.flush();
@@ -151,25 +112,22 @@ void potentiometers(int input, int channel) {
       }
     }
     delay(10);
-
 }
 
 
-// if using with ATmega32U4 (micro, pro micro, leonardo...)
+void setup() {
+  // Baud Rate
+  // 31250 for MIDI class compliant | 115200 for Hairless MIDI
 
-
-// Arduino MIDI functions MIDIUSB Library
-void noteOn(byte channel, byte pitch, byte velocity) {
-  midiEventPacket_t noteOn = {0x09, 0x90 | channel, pitch, velocity};
-  MidiUSB.sendMIDI(noteOn);
+  // Initialize buttons with pull up resistors
+  for (int i = 0; i < NButtons; i++) {
+    pinMode(buttonPin[i], INPUT_PULLUP);
+  }
 }
 
-void noteOff(byte channel, byte pitch, byte velocity) {
-  midiEventPacket_t noteOff = {0x08, 0x80 | channel, pitch, velocity};
-  MidiUSB.sendMIDI(noteOff);
-}
-
-void controlChange(byte channel, byte control, byte value) {
-  midiEventPacket_t event = {0x0B, 0xB0 | channel, control, value};
-  MidiUSB.sendMIDI(event);
+void loop() {
+  potentiometers(A9,0);
+  potentiometers(A8,1);
+  potentiometers(A7,2);
+  buttons(2, 36);
 }
