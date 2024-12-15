@@ -1,22 +1,26 @@
 /*
   Based on Sketch built by Gustavo Silveira (aka Music Nerd)
   Modified by Dolce Wang
-
-  This code is only for Arduinos that use ATmega32u4 (like Micro, Pro Micro, Leonardo...)
-  Remember to also assign the correct board in the IDE (like Tools / Boards / Sparkfun AVR / Pro Micro...)
 */
 
 #include "MIDIUSB.h"
 
-// BUTTONS
-const int NButtons = 4; //***  total number of buttons
-const int buttonPin[NButtons] = {2, 3, 5, 7}; //*** define Digital Pins connected from Buttons to Arduino; (ie {10, 16, 14, 15, 6, 7, 8, 9, 2, 3, 4, 5}; 12 buttons)
-int buttonCState[NButtons] = {};        // stores the button current value
-int buttonPState[NButtons] = {};        // stores the button previous value
-// debounce
-unsigned long lastDebounceTime[NButtons] = {0};  // the last time the output pin was toggled
-unsigned long debounceDelay = 50;    //** the debounce time; increase if the output flickers
+// MIDI
+const byte MIDI_CHANNEL = 1;
+const byte MIDI_BUTTON_UP = 0;
+const byte MIDI_BUTTON_DOWN = 127;
 
+// buttons
+const int NUM_BUTTONS = 5;
+const int button_pin[NUM_BUTTONS] = {7, 14, 15, 16, 18};
+int button_value[NUM_BUTTONS] = {};
+int button_prev_value[NUM_BUTTONS] = {};
+unsigned long last_debounce_time[NUM_BUTTONS] = {0};
+const unsigned long DEBOUNCE_DELAY = 50; // ms
+const byte PIN_BUTTON_UP = HIGH;
+const byte PIN_BUTTON_DOWN = LOW;
+
+/*
 // POTENTIOMETERS
 const int NPots = 8; //*** total number of pots (knobs and faders)
 const int potPin[NPots] = {A9, A8, A7, A6, A3, A2, A1, A0}; //*** define Analog Pins connected from Pots to Arduino; Leave nothing in the array if 0 pots {}
@@ -33,22 +37,7 @@ boolean potMoving = true; // If the potentiometer is moving
 unsigned long PTime[NPots] = {0}; // Previously stored time; delete 0 if 0 pots
 unsigned long timer[NPots] = {0}; // Stores the time that has elapsed since the timer was reset; delete 0 if 0 pots
 
-// MIDI Assignments
-byte midiCh = 1; //* MIDI channel to be used
-byte note = 36; //* Lowest note to be used; 36 = C2; 60 = Middle C
-byte cc = 0; //* Lowest MIDI CC to be used
-
-
-// Arduino MIDI functions MIDIUSB Library
-void noteOn(byte channel, byte pitch, byte velocity) {
-  midiEventPacket_t noteOn = {0x09, 0x90 | channel, pitch, velocity};
-  MidiUSB.sendMIDI(noteOn);
-}
-
-void noteOff(byte channel, byte pitch, byte velocity) {
-  midiEventPacket_t noteOff = {0x08, 0x80 | channel, pitch, velocity};
-  MidiUSB.sendMIDI(noteOff);
-}
+ */
 
 void controlChange(byte channel, byte control, byte value) {
   midiEventPacket_t event = {0x0B, 0xB0 | channel, control, value};
@@ -56,26 +45,31 @@ void controlChange(byte channel, byte control, byte value) {
 }
 
 
-void buttons(int input, int channel) {
-    buttonCState[channel] = digitalRead(input);  // read pins from arduino
-    if ((millis() - lastDebounceTime[channel]) > debounceDelay) {
-      if (buttonPState[channel] != buttonCState[channel]) {
-        lastDebounceTime[channel] = millis();
-
-        if (buttonCState[channel] == LOW) {
-          // Sends the MIDI note ON
-          noteOn(midiCh, channel, 127);  // channel, note, velocity
-          MidiUSB.flush();
-        } else {
-          // Sends the MIDI note OFF accordingly to the chosen board
-          noteOn(midiCh, channel, 0);  // channel, note, velocity
-          MidiUSB.flush();
-        }
-        buttonPState[channel] = buttonCState[channel];
+void updateButton(int pin, int cc, int channel = MIDI_CHANNEL) {
+    button_value[pin] = digitalRead(pin);
+    if ((millis() - last_debounce_time[pin]) > DEBOUNCE_DELAY) {
+      if (button_prev_value[pin] != button_value[pin]) {
+        last_debounce_time[cc] = millis();
+        int value = (button_value[pin] == PIN_BUTTON_DOWN) ? MIDI_BUTTON_DOWN : MIDI_BUTTON_UP;
+        controlChange(channel, cc, value);
+        MidiUSB.flush();
+        button_prev_value[pin] = button_value[pin];
       }
     }
+
+    char buff[80];
+    sprintf(
+      buff,
+      "P%02i=%4s #%2i=%03i  |  ",
+      pin,
+      (button_value[pin] == PIN_BUTTON_DOWN) ? "DOWN": "UP",
+      cc,
+      (button_value[pin] == PIN_BUTTON_DOWN) ? MIDI_BUTTON_DOWN : MIDI_BUTTON_UP
+    );
+    Serial.print(buff);
 }
 
+/*
 void potentiometers(int input, int channel) {
     int potAvg = 0;
     for ( int j = 0; j < 10; j++){
@@ -113,21 +107,24 @@ void potentiometers(int input, int channel) {
     }
     delay(10);
 }
+*/
 
 
 void setup() {
-  // Baud Rate
-  // 31250 for MIDI class compliant | 115200 for Hairless MIDI
-
-  // Initialize buttons with pull up resistors
-  for (int i = 0; i < NButtons; i++) {
-    pinMode(buttonPin[i], INPUT_PULLUP);
+  for (int i = 0; i < NUM_BUTTONS; i++) {
+    pinMode(button_pin[i], INPUT_PULLUP);
   }
 }
 
 void loop() {
-  potentiometers(A9,0);
-  potentiometers(A8,1);
-  potentiometers(A7,2);
-  buttons(2, 36);
+  for (int i = 0; i < NUM_BUTTONS; i++) {
+      int pin = button_pin[i];
+      //int value = digitalRead(pin);
+      updateButton(pin, pin);
+  }
+  Serial.println();
+
+  //potentiometers(A7,7);
+  // potentiometers(A8,8);
+  // potentiometers(A9,9);
 }
