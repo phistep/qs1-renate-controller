@@ -1,6 +1,10 @@
 /*
   Based on Sketch built by Gustavo Silveira (aka Music Nerd)
   Modified by Dolce Wang
+
+  TODO
+  - fix midi channel, volume updates, ...
+  - set custom name
 */
 
 #include "MIDIUSB.h"
@@ -9,35 +13,30 @@
 const byte MIDI_CHANNEL = 1;
 const byte MIDI_BUTTON_UP = 0;
 const byte MIDI_BUTTON_DOWN = 127;
+const byte MIDI_MIN = 0;
+const byte MIDI_MAX = 127;
 
 // buttons
 const int NUM_BUTTONS = 5;
 const int button_pin[NUM_BUTTONS] = {7, 14, 15, 16, 18};
-int button_value[NUM_BUTTONS] = {};
-int button_prev_value[NUM_BUTTONS] = {};
+int button_value[NUM_BUTTONS] = {HIGH};
+int button_prev_value[NUM_BUTTONS] = {HIGH};
 unsigned long last_debounce_time[NUM_BUTTONS] = {0};
 const unsigned long DEBOUNCE_DELAY = 50; // ms
 const byte PIN_BUTTON_UP = HIGH;
 const byte PIN_BUTTON_DOWN = LOW;
 
-/*
-// POTENTIOMETERS
-const int NPots = 8; //*** total number of pots (knobs and faders)
-const int potPin[NPots] = {A9, A8, A7, A6, A3, A2, A1, A0}; //*** define Analog Pins connected from Pots to Arduino; Leave nothing in the array if 0 pots {}
-int potCState[NPots] = {0}; // Current state of the pot; delete 0 if 0 pots
-int potPState[NPots] = {0}; // Previous state of the pot; delete 0 if 0 pots
-int potVar = 0; // Difference between the current and previous state of the pot
+// potentiometers
+const int NUM_POTS = 6;
+const int pot_pin[NUM_POTS] = {A2, A3, A6, A7, A8, A9};
+const int POT_MIN = 0;
+const int POT_MAX = 1023;
+int pot_prev_value[NUM_POTS] = {POT_MIN};
+unsigned long pot_last_change[NUM_POTS] = {0}; // ms
+const int POT_TIMEOUT = 300; // ms
+const int POT_THRESHOLD = 20; // /1024
+int midi_prev_value[NUM_POTS] = {MIDI_MIN};
 
-int midiCState[NPots] = {0}; // Current state of the midi value; delete 0 if 0 pots
-int midiPState[NPots] = {0}; // Previous state of the midi value; delete 0 if 0 pots
-
-const int TIMEOUT = 300; //* Amount of time the potentiometer will be read after it exceeds the varThreshold
-const int varThreshold = 20; //* Threshold for the potentiometer signal variation
-boolean potMoving = true; // If the potentiometer is moving
-unsigned long PTime[NPots] = {0}; // Previously stored time; delete 0 if 0 pots
-unsigned long timer[NPots] = {0}; // Stores the time that has elapsed since the timer was reset; delete 0 if 0 pots
-
- */
 
 void controlChange(byte channel, byte control, byte value) {
   midiEventPacket_t event = {0x0B, 0xB0 | channel, control, value};
@@ -52,62 +51,57 @@ void updateButton(int pin, int cc, int channel = MIDI_CHANNEL) {
         last_debounce_time[cc] = millis();
         int value = (button_value[pin] == PIN_BUTTON_DOWN) ? MIDI_BUTTON_DOWN : MIDI_BUTTON_UP;
         controlChange(channel, cc, value);
-        MidiUSB.flush();
         button_prev_value[pin] = button_value[pin];
       }
     }
 
     char buff[80];
     sprintf(
-      buff,
-      "P%02i=%4s #%2i=%03i  |  ",
-      pin,
-      (button_value[pin] == PIN_BUTTON_DOWN) ? "DOWN": "UP",
-      cc,
-      (button_value[pin] == PIN_BUTTON_DOWN) ? MIDI_BUTTON_DOWN : MIDI_BUTTON_UP
+      buff, "P%02i=%4s #%2i=%03i  |  ",
+      pin, (button_value[pin] == PIN_BUTTON_DOWN) ? "DOWN": "UP",
+      cc, (button_value[pin] == PIN_BUTTON_DOWN) ? MIDI_BUTTON_DOWN : MIDI_BUTTON_UP
     );
     Serial.print(buff);
 }
 
-/*
-void potentiometers(int input, int channel) {
-    int potAvg = 0;
-    for ( int j = 0; j < 10; j++){
-       potAvg += analogRead(input); // reads the pins from arduino
+void updatePotentiometer(
+    const int pin,
+    const int cc,
+    const int channel = MIDI_CHANNEL,
+    const int num_avg = 10
+) {
+    int value = 0;
+    for (int i = 0; i < num_avg; i++) {
+        value += analogRead(pin);
     }
-    potCState[channel] = int(potAvg/10);
-    Serial.print(int(potCState[channel]/10));
-    midiCState[channel] = map(potCState[channel], 0, 1023, 0, 127); // Maps the reading of the potCState to a value usable in midi
+    value /= num_avg;
+    value = POT_MAX - value;  // potentiometer position was inverted
+    int midi_value = map(value, POT_MIN, POT_MAX, MIDI_MIN, MIDI_MAX);
 
-    potVar = abs(potCState[channel] - potPState[channel]); // Calculates the absolute value between the difference between the current and previous state of the pot
-
-    if (potVar > varThreshold) { // Opens the gate if the potentiometer variation is greater than the threshold
-      PTime[channel] = millis(); // Stores the previous time
+    int change = abs(value - pot_prev_value[pin]);
+    if (change > POT_THRESHOLD) {
+      pot_last_change[pin] = millis();
     }
+    unsigned long timer = millis() - pot_last_change[pin];
 
-    timer[channel] = millis() - PTime[channel]; // Resets the timer 11000 - 11000 = 0ms
-
-    if (timer[channel] < TIMEOUT) { // If the timer is less than the maximum allowed time it means that the potentiometer is still moving
-      potMoving = true;
-    }
-    else {
-      potMoving = false;
-    }
-
-    if (potMoving == true) { // If the potentiometer is still moving, send the change control
-      if (midiPState[channel] != midiCState[channel]) {
-        // Sends  MIDI CC
-        // Use if using with ATmega32U4 (micro, pro micro, leonardo...)
-        controlChange(midiCh, channel, midiCState[channel]); //  (channel, CC number,  CC value)
-        MidiUSB.flush();
-
-        potPState[channel] = potCState[channel]; // Stores the current reading of the potentiometer to compare with the next
-        midiPState[channel] = midiCState[channel];
+    bool pot_changing = (timer < POT_TIMEOUT);
+    if (pot_changing) {
+      // only send control if value is still chaning
+      if (midi_prev_value[cc] != midi_value) {
+        controlChange(channel, cc, midi_value);
+        pot_prev_value[cc] = value;
+        midi_prev_value[cc] = midi_value;
       }
     }
-    delay(10);
+
+    char buff[80];
+    sprintf(
+      buff, "P%02i=%4i #%02i=%03i  |  ",
+      pin, value,
+      cc, midi_value
+    );
+    Serial.print(buff);
 }
-*/
 
 
 void setup() {
@@ -118,13 +112,16 @@ void setup() {
 
 void loop() {
   for (int i = 0; i < NUM_BUTTONS; i++) {
-      int pin = button_pin[i];
-      //int value = digitalRead(pin);
-      updateButton(pin, pin);
+    int pin = button_pin[i];
+    updateButton(pin, pin);
   }
   Serial.println();
 
-  //potentiometers(A7,7);
-  // potentiometers(A8,8);
-  // potentiometers(A9,9);
+  for (int i = 0; i < NUM_POTS; i++) {
+    int pin = pot_pin[i];
+    updatePotentiometer(pin, pin);
+  }
+  Serial.println();
+
+  MidiUSB.flush();
 }
