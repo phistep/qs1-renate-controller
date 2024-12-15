@@ -19,8 +19,8 @@ const byte MIDI_MAX = 127;
 // buttons
 const int NUM_BUTTONS = 5;
 const int button_pin[NUM_BUTTONS] = {7, 14, 15, 16, 18};
-int button_value[NUM_BUTTONS] = {HIGH};
-int button_prev_value[NUM_BUTTONS] = {HIGH};
+int button_value[NUM_BUTTONS] = {};
+int button_prev_value[NUM_BUTTONS] = {};
 unsigned long last_debounce_time[NUM_BUTTONS] = {0};
 const unsigned long DEBOUNCE_DELAY = 50; // ms
 const byte PIN_BUTTON_UP = HIGH;
@@ -115,13 +115,12 @@ void loop() {
     int pin = button_pin[i];
     updateButton(pin, pin);
   }
-  Serial.println();
 
   for (int i = 0; i < NUM_POTS; i++) {
     int pin = pot_pin[i];
     updatePotentiometer(pin, pin);
   }
-  Serial.println();
 
+  Serial.println();
   MidiUSB.flush();
 }
