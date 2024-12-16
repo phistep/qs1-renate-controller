@@ -1,4 +1,13 @@
-# Arduino
+# QS-1 MIDI Controller "Renate"
+
+## Hardware
+
+- [Sparkfun Qwiic Pro Micro][sparkfun_pro_micro]
+- Potentiometers
+- Buttons
+
+
+## Firmware
 
 [Tutorial][instructables]
 
@@ -19,5 +28,23 @@ brew install arduino-ide
 9. _Tools_ > _Port..._ > `/dev/cu.usbmodemMID1` (PC will probably say COM)
 
 
+# TODO
+- fix midi channel, volume updates, ...
+- set custom name
 
+- refactor
+  - no global state, pass pointers to state
+    - Potentiometer, Button, Toggle structs
+  - configurable via header
+  - migrate to high-level
+
+- dev setup
+  - setup compiling and programming via commandline/zed actions
+    - `brew install arduino`
+    - https://github.com/arduino/Arduino/blob/master/build/shared/manpage.adoc
+  - fix clangd or other lsp
+  - make zed extension for ino
+
+
+[sparkfun_pro_micro]: https://www.sparkfun.com/products/15795
 [instructables]: https://www.instructables.com/DIY-USB-Midi-Controller-With-Arduino-a-Beginners-G/
