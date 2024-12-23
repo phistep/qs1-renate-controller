@@ -1,9 +1,19 @@
+/// //
+/// uniform int max_iterations;  // =80 [1,200,1]
+/// uniform bool dbg_normal;  // =False
+/// uniform float rot_y_speed;  // =6.619999885559082 [-10,10]
+/// uniform float rot_x_speed;  // =6.849999904632568 [-10,10]
+/// uniform float qs1_width;  // =0.10000000149011612 [0,1]
+/// uniform float pulse_amp;  // =0.00800000037997961 [0,0.1]
+/// uniform float pulse_freq;  // =0.7400000095367432 [0,1]
+/// uniform vec3 color_qs1;  // <color> =(1.0,0.351190447807312,0.0) [0.0,1.0,0.01]
+
 /* TODO
- * ground and sky, max it
  * fov
  * bloated ones rotation the background
  * gradient to the center
- * burning flames and hyperdrive start bg
+ * burning flames
+ * fbm noise
  * pulsate with mic
  * midi
  *   knob 1 rotation speed
@@ -26,7 +36,6 @@ uniform float qs1_width; // =0.1 [0, 1]
 uniform float pulse_amp; // =0.05 [0, 0.1]
 uniform float pulse_freq; // =0.1 [0, 1]
 uniform vec3 color_qs1; // <color> =(1.,1.,1.)
-uniform vec3 color_background; // <color> =(0.,0.,0.)
 
 struct Material {
     vec3 color;
@@ -76,8 +85,6 @@ Hit f(vec3 p) {
     Hit hit = Hit(1. / 0., Material(vec3(1., 1., 0), vec2(0.)));
     float QS1_W = qs1_width + pulse_amp * cos(2 * PI * u_Time / pulse_freq);
 
-    Hit background = Hit(p.y + 5., Material(color_background, vec2(0.)));
-
     float sd_qs1 = 1. / 0.;
     vec3 pp = rot3D_x(2 * PI * u_Time / rot_x_speed) * rot3D_y(2 * PI * u_Time / rot_y_speed) * p;
     sd_qs1 = min(sd_qs1, sd_cube(pp - vec3(0, 4 * QS1_W, 0), vec3(12.75 * QS1_W, QS1_W, QS1_W)));
@@ -96,10 +103,12 @@ Hit f(vec3 p) {
     // TODO uv
     Hit qs1 = Hit(sd_qs1, Material(color_qs1, vec2(0.)));
 
-    return (background.distance < qs1.distance) ? background : qs1;
+    return qs1;
 }
 
 vec3 calc_normal(vec3 p) {
+    // tetrahedron technique
+    // https://iquilezles.org/articles/normalsSDF/
     const float h = 0.0001;
     const vec2 k = vec2(1, -1);
     return normalize(
@@ -108,6 +117,30 @@ vec3 calc_normal(vec3 p) {
             + k.yxy * f(p + k.yxy * h).distance
             + k.xxx * f(p + k.xxx * h).distance
     );
+}
+
+vec3 warp_speed(vec2 uv) {
+    // https://www.shadertoy.com/view/4tjSDt
+    // 'Warp Speed 2'
+    // David Hoskins 2015.
+    // License Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License.
+    // Fork of: https://www.shadertoy.com/view/Msl3WH
+
+    float s = 0.0, v = 0.0;
+    float time = (u_Time - 2.0) * 58.0;
+    vec3 col = vec3(0);
+    vec3 init = vec3(sin(time * .0032) * .3, .35 - cos(time * .005) * .3, time * 0.002);
+    for (int r = 0; r < 100; r++)
+    {
+        vec3 p = init + s * vec3(uv, 0.05);
+        p.z = fract(p.z);
+        // Thanks to Kali's little chaotic loop...
+        for (int i = 0; i < 10; i++) p = abs(p * 2.04) / dot(p, p) - .9;
+        v += pow(dot(p, p), .7) * .06;
+        col += vec3(v * 0.2 + .4, 12. - s * 2., .1 + v * 1.) * v * 0.00003;
+        s += .025;
+    }
+    return clamp(col, 0.0, 1.0);
 }
 
 void main() {
@@ -128,11 +161,14 @@ void main() {
 
         if (hit.distance < .001) {
             normal = calc_normal(p);
-            vec3 light = vec3(-1);
+            vec3 light = vec3(0, 1, -1);
             color *= dot(normal, light);
             break;
         }
-        if (travel > 80.) break;
+        if (travel > 80.) {
+            color = warp_speed(uv);
+            break;
+        }
     }
 
     FragColor = vec4(dbg_normal ? normal : color, 1);
