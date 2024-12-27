@@ -27,11 +27,23 @@
 
 // There are no lights and no AO, only color by normals and dark edges.
 
-// update: Nyan Cat cameo, thanks to code from mu6k: https://www.shadertoy.com/view/4dXGWH
+uniform bool only_edges; // =False
 
-//#define SHOWONLYEDGES
-//#define NYAN
-#define WAVES
+uniform float sun_angle; // =1. [0, 3.14] #16
+uniform float sun_r; // =7. [1, 14] #17
+
+uniform float wave_amp; // =0.15 [0, 1]
+uniform float wave_freq; // =6. [0, 12]
+
+// walls
+uniform float fr_a; // =1.5 [0, 6]
+uniform float fr_b; // =1. [0, 6]
+
+// floor
+uniform float floor_pos; // =1. [-2, 2]
+uniform float floor_width; // =0.3 [-2, 2]
+uniform float floor_height; // =0.35 [-2, 2]
+
 #define BORDER
 
 #define RAY_STEPS 150
@@ -62,9 +74,7 @@ vec4 formula(vec4 p) {
 
 // Distance function
 float de(vec3 pos) {
-    #ifdef WAVES
-    pos.y += sin(pos.z - t * 6.) * .15; //waves!
-    #endif
+    pos.y += sin(pos.z - t * wave_freq) * wave_amp; //waves!
     float hid = 0.;
     vec3 tpos = pos;
     tpos.z = abs(3. - mod(tpos.z, 6.));
@@ -72,8 +82,8 @@ float de(vec3 pos) {
     for (int i = 0; i < 4; i++) {
         p = formula(p);
     }
-    float fr = (length(max(vec2(0.), p.yz - 1.5)) - 1.) / p.w;
-    float ro = max(abs(pos.x + 1.) - .3, pos.y - .35);
+    float fr = (length(max(vec2(0.), p.yz - fr_a)) - fr_b) / p.w;
+    float ro = max(abs(pos.x + floor_pos) - floor_width, pos.y - floor_height);
     ro = max(ro, -max(abs(pos.x + 1.) - .1, pos.y - .5));
     pos.z = abs(.25 - mod(pos.z, .5));
     ro = max(ro, -max(abs(pos.z) - .2, pos.y - .3));
@@ -104,47 +114,6 @@ vec3 normal(vec3 p) {
     return normalize(vec3(d1 - d2, d3 - d4, d5 - d6));
 }
 
-// Used Nyan Cat code by mu6k, with some mods
-
-vec4 rainbow(vec2 p)
-{
-    float q = max(p.x, -0.1);
-    float s = sin(p.x * 7.0 + t * 70.0) * 0.08;
-    p.y += s;
-    p.y *= 1.1;
-
-    vec4 c;
-    if (p.x > 0.0) c = vec4(0, 0, 0, 0); else
-    if (0.0 / 6.0 < p.y && p.y < 1.0 / 6.0) c = vec4(255, 43, 14, 255) / 255.0; else
-    if (1.0 / 6.0 < p.y && p.y < 2.0 / 6.0) c = vec4(255, 168, 6, 255) / 255.0; else
-    if (2.0 / 6.0 < p.y && p.y < 3.0 / 6.0) c = vec4(255, 244, 0, 255) / 255.0; else
-    if (3.0 / 6.0 < p.y && p.y < 4.0 / 6.0) c = vec4(51, 234, 5, 255) / 255.0; else
-    if (4.0 / 6.0 < p.y && p.y < 5.0 / 6.0) c = vec4(8, 163, 255, 255) / 255.0; else
-    if (5.0 / 6.0 < p.y && p.y < 6.0 / 6.0) c = vec4(122, 85, 255, 255) / 255.0; else
-    if (abs(p.y) - .05 < 0.0001) c = vec4(0., 0., 0., 1.); else
-    if (abs(p.y - 1.) - .05 < 0.0001) c = vec4(0., 0., 0., 1.); else
-        c = vec4(0, 0, 0, 0);
-    c.a *= .8 - min(.8, abs(p.x * .08));
-    c.xyz = mix(c.xyz, vec3(length(c.xyz)), .15);
-    return c;
-}
-
-vec4 nyan(vec2 p)
-{
-    vec2 uv = p * vec2(0.4, 1.0);
-    float ns = 3.0;
-    float nt = iTime * ns;
-    nt -= mod(nt, 240.0 / 256.0 / 6.0);
-    nt = mod(nt, 240.0 / 256.0);
-    float ny = mod(iTime * ns, 1.0);
-    ny -= mod(ny, 0.75);
-    ny *= -0.05;
-    vec4 color = vec4(0.0); // texture(iChannel1,vec2(uv.x/3.0+210.0/256.0-nt+0.05,.5-uv.y-ny));
-    if (uv.x < -0.3) color.a = 0.0;
-    if (uv.x > 0.2) color.a = 0.0;
-    return color;
-}
-
 // Raymarching and 2D graphics
 
 vec3 raymarch(in vec3 from, in vec3 dir)
@@ -165,16 +134,16 @@ vec3 raymarch(in vec3 from, in vec3 dir)
     vec3 col = vec3(0.);
     p -= (det - d) * dir;
     norm = normal(p);
-    #ifdef SHOWONLYEDGES
-    col = 1. - vec3(edge); // show wireframe version
-    #else
-    col = (1. - abs(norm)) * max(0., 1. - edge * .8); // set normal as color with dark edges
-    #endif
+    if (only_edges) {
+        col = 1. - vec3(edge); // show wireframe version
+    } else {
+        col = (1. - abs(norm)) * max(0., 1. - edge * .8); // set normal as color with dark edges
+    }
     totdist = clamp(totdist, 0., 26.);
     dir.y -= .02;
     // TODO use Mic!
-    float sunsize = 7; //.-max(0.,texture(iChannel0,vec2(.6,.2)).x)*5.; // responsive sun size
-    float an = atan(dir.x, dir.y) + iTime * 1.5; // angle for drawing and rotating sun
+    float sunsize = sun_r; //.-max(0.,texture(iChannel0,vec2(.6,.2)).x)*5.; // responsive sun size
+    float an = atan(dir.x, dir.y) + iTime * 1.5 * sun_angle; // angle for drawing and rotating sun
     float s = pow(clamp(1.0 - length(dir.xy) * sunsize - abs(.2 - mod(an, .4)), 0., 1.), .1); // sun
     float sb = pow(clamp(1.0 - length(dir.xy) * (sunsize - .2) - abs(.2 - mod(an, .4)), 0., 1.), .1); // sun border
     float sg = pow(clamp(1.0 - length(dir.xy) * (sunsize - 4.5) - .5 * abs(.2 - mod(an, .4)), 0., 1.), 3.); // sun rays
@@ -189,19 +158,11 @@ vec3 raymarch(in vec3 from, in vec3 dir)
     if (totdist > 25.) col = backg; // hit background
     col = pow(col, vec3(GAMMA)) * BRIGHTNESS;
     col = mix(vec3(length(col)), col, SATURATION);
-    #ifdef SHOWONLYEDGES
-    col = 1. - vec3(length(col));
-    #else
-    col *= vec3(1., .9, .85);
-    #ifdef NYAN
-    dir.yx *= rot(dir.x);
-    vec2 ncatpos = (dir.xy + vec2(-3. + mod(-t, 6.), -.27));
-    vec4 ncat = nyan(ncatpos * 5.);
-    vec4 rain = rainbow(ncatpos * 10. + vec2(.8, .5));
-    if (totdist > 8.) col = mix(col, max(vec3(.2), rain.xyz), rain.a * .9);
-    if (totdist > 8.) col = mix(col, max(vec3(.2), ncat.xyz), ncat.a * .9);
-    #endif
-    #endif
+    if (only_edges) {
+        col = 1. - vec3(length(col));
+    } else {
+        col *= vec3(1., .9, .85);
+    }
     return col;
 }
 
