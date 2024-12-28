@@ -8,6 +8,9 @@
 # dotenv = ["python-dotenv"]
 # ///
 
+# TODO glslsandbox.com
+# TODO dwitter.com
+
 import sys
 import os
 import textwrap
@@ -23,7 +26,8 @@ class Source(StrEnum):
 
 
 def import_shadertoy(args):
-    URL="https://www.shadertoy.com/api/v1/shaders/"
+    API_URL="https://www.shadertoy.com/api/v1/shaders/"
+    VIEW_URL="https://www.shadertoy.com/view/"
 
     if not (api_key := os.getenv('VHSH_API_KEY_SHADERTOY')):
         raise RuntimeError("Set 'VHSH_API_KEY_SHADERTOY': https://www.shadertoy.com/myapps")
@@ -33,9 +37,10 @@ def import_shadertoy(args):
     else:
         id_ = urlparse(args.url).path.split('/')[-1]
 
+    url = f"// {VIEW_URL}{id_}"
 
     # TODO use session or auth provider?
-    r = requests.get(URL + id_,
+    r = requests.get(API_URL + id_,
                      params={"key": api_key},
                      headers={"user-agent": "vhsh/0.1.0"})
     r.raise_for_status()
@@ -63,6 +68,8 @@ def import_shadertoy(args):
     uniform float     iSampleRate;           // sound sample rate (i.e., 44100)
     """
 
+    # TODO maybe arrays need to be defined as variables?
+    # TODO maybe literals should be assigned to const variables?
     adapters = textwrap.dedent("""\
         #define iResolution vec3(u_Resolution, 0.0)
         #define iTime u_Time
@@ -92,7 +99,7 @@ def import_shadertoy(args):
         filename = f"{info['id']}_{safe_name}.glsl"
 
     with open(filename, 'w') as f:
-        f.write('\n\n'.join([header, adapters, src, main_func]))
+        f.write('\n\n'.join([url, header, adapters, src, main_func]))
     print(f"wrote '{filename}'")
 
 
