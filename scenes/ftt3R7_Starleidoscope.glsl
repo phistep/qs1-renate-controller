@@ -25,7 +25,18 @@
 #define iDate vec4(1970.0, 1.0, 1.0, 0.0)
 #define iSampleRate 44100.0
 
-#define NUM_LAYERS 10.
+uniform float num_layers; // =10. [1, 25]
+uniform vec2 hue_shift; // =(0.,0.)
+uniform float hue_shift_a; // =2345.2
+uniform vec3 hue_shift_b; // =(.2,.3,.9)
+uniform float intensity; // =0.02 [0,0.15]
+uniform float shine; // =1000. [10, 1000]
+uniform float scale_a; // =20.
+uniform float scale_b; // =.5
+uniform float fade_a; // =1.
+uniform float fade_b; // =.9
+
+uniform float angle; // =0.67
 
 mat2 Rot(float a) {
     float c = cos(a), s = sin(a);
@@ -35,9 +46,9 @@ mat2 Rot(float a) {
 float Star(vec2 uv, float flare) {
     float col = 0.;
     float d = length(uv);
-    float m = .02 / d;
+    float m = intensity / d;
 
-    float rays = max(0., 1. - abs(uv.x * uv.y * 1000.));
+    float rays = max(0., 1. - abs(uv.x * uv.y * shine));
     m += rays * flare;
     uv *= Rot(3.1415 / 4.);
     rays = max(0., 1. - abs(uv.x * uv.y * 1000.));
@@ -73,7 +84,7 @@ vec3 StarLayer(vec2 uv) {
             float star = Star(gv - offs - p + .5, smoothstep(.8, 1., size) * .6);
 
             // TODO mic responsive
-            vec3 hueShift = vec3(0.); //fract(n*2345.2 + dot(uv /420.,texture(iChannel0, vec2(0.25, 0.)).rg))*vec3(.2, .3, .9)*123.2;
+            vec3 hueShift = fract(n * hue_shift_a + dot(uv / 420., hue_shift)) * hue_shift_b * 123.2;
 
             vec3 color = sin(hueShift) * .5 + .5;
             color = color * vec3(1., .25, 1. + size);
@@ -105,7 +116,7 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
 
     // col += smoothstep(.01, .0, abs(d));
 
-    n = N((2. / 3.) * 3.1415);
+    n = N(angle * 3.1415);
     float scale = 1.;
     uv.x += 1.5 / 1.25;
     for (int i = 0; i < 5; i++) {
@@ -123,12 +134,10 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord)
     uv *= Rot(t);
     vec3 col = vec3(0.);
 
-    float layers = 10.;
-
-    for (float i = 0.; i < 1.; i += 1. / NUM_LAYERS) {
+    for (float i = 0.; i < 1.; i += 1. / num_layers) {
         float depth = fract(i + t);
-        float scale = mix(20., .5, depth);
-        float fade = depth * smoothstep(1., .9, depth);
+        float scale = mix(scale_a, scale_b, depth);
+        float fade = depth * smoothstep(fade_a, fade_b, depth);
         col += StarLayer(uv * scale + i * 453.2) * fade;
     }
 
