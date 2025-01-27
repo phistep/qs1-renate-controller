@@ -27,22 +27,22 @@
 
 // There are no lights and no AO, only color by normals and dark edges.
 
-uniform bool only_edges; // =False
+uniform bool filled; // #14
 
-uniform float sun_angle; // =1. [0, 3.14] #16
-uniform float sun_r; // =7. [1, 14] #17
+uniform float sun_angle; // =1. [0, 3.14]
+uniform float sun_r; // =7. [1, 14] #102
 
-uniform float wave_amp; // =0.15 [0, 1]
+uniform float wave_amp; // =0.15 [0, 1] #103
 uniform float wave_freq; // =6. [0, 12]
 
 // walls
-uniform float fr_a; // =1.5 [0, 6]
-uniform float fr_b; // =1. [0, 6]
+uniform float fr_a; // =1.5 [0, 6] #106
+uniform float fr_b; // =1. [0, 6] #107
 
 // floor
 uniform float floor_pos; // =1. [-2, 2]
-uniform float floor_width; // =0.3 [-2, 2]
-uniform float floor_height; // =0.35 [-2, 2]
+uniform float floor_width; // =0.3 [-2, 2] #108
+uniform float floor_height; // =0.35 [-2, 2] #109
 
 #define BORDER
 
@@ -134,7 +134,7 @@ vec3 raymarch(in vec3 from, in vec3 dir)
     vec3 col = vec3(0.);
     p -= (det - d) * dir;
     norm = normal(p);
-    if (only_edges) {
+    if (!filled) {
         col = 1. - vec3(edge); // show wireframe version
     } else {
         col = (1. - abs(norm)) * max(0., 1. - edge * .8); // set normal as color with dark edges
@@ -158,7 +158,7 @@ vec3 raymarch(in vec3 from, in vec3 dir)
     if (totdist > 25.) col = backg; // hit background
     col = pow(col, vec3(GAMMA)) * BRIGHTNESS;
     col = mix(vec3(length(col)), col, SATURATION);
-    if (only_edges) {
+    if (!filled) {
         col = 1. - vec3(length(col));
     } else {
         col *= vec3(1., .9, .85);

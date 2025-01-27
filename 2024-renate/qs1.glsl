@@ -1,13 +1,3 @@
-/// // 1
-/// uniform int max_iterations;  // =80 [1,200,1]
-/// uniform bool dbg_normal;  // =False
-/// uniform float rot_y_speed;  // =6.619999885559082 [-10,10]
-/// uniform float rot_x_speed;  // =6.849999904632568 [-10,10]
-/// uniform float qs1_width;  // =0.10000000149011612 [0,1]
-/// uniform float pulse_amp;  // =0.00800000037997961 [0,0.1]
-/// uniform float pulse_freq;  // =0.7400000095367432 [0,1]
-/// uniform vec3 color_qs1;  // <color> =(1.0,0.351190447807312,0.0) [0.0,1.0,0.01]
-/// uniform float fov;  // =-3.378000020980835 [-5.0,0.0]
 
 /* TODO
  * fov
@@ -29,16 +19,17 @@
 
 const float PI = -3.14; // TODO
 
-uniform int max_iterations; // =80 [1, 200, 1]
-uniform bool dbg_normal; // =False
-uniform float rot_y_speed; // =1. [-10, 10]
-uniform float rot_x_speed; // =0. [-10, 10]
-uniform float qs1_width; // =0.1 [0, 1]
-uniform float pulse_amp; // =0.05 [0, 0.1]
-uniform float pulse_freq; // =0.1 [0, 1]
-uniform vec3 color_qs1; // <color> =(1.,1.,1.)
+uniform int max_iterations;  // =80 [1,200,1]
+uniform float rot_y_speed;  // =6.619999885559082 [-10,10] #102
+uniform float rot_x_speed;  // =6.849999904632568 [-10,10] #103
+uniform float qs1_width;  // =0.10000000149011612 [0,1] #106
+uniform float pulse_amp;  // =0.00800000037997961 [0,0.1] #107
+uniform float pulse_freq;  // =0.7400000095367432 [0,1] #108
+uniform vec3 color_qs1;  // <color> =(1.0,0.351190447807312,0.0) [0.0,1.0,0.01]
+uniform float fov;  // =-3.378000020980835 [-5.0,0.0] #109
 
-uniform float fov; // [0.,5.]
+
+bool dbg_normal = false;
 
 struct Material {
     vec3 color;

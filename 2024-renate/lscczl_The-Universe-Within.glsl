@@ -54,7 +54,7 @@
 
 // TODO no full black
 
-uniform bool simple; // =False
+bool simple = false; // =False
 uniform float glow; // =0.5 [0.,1.]
 float fft = glow; //u_Microphone[2];
 uniform float speed; // =0.1 [0.,2.]
@@ -62,23 +62,23 @@ uniform float speed; // =0.1 [0.,2.]
 uniform bool color_auto; // =True
 uniform vec3 color; // <color> =(1.,1.,1.)
 
-uniform float layer_count; // =4. [1.,10.]
+uniform float layer_count; // =4. [1.,10.] #102
 uniform float layer_size_min; // =1. [1.,50.]
-uniform float layer_size_max; // =15. [1.,50.]
+uniform float layer_size_max; // =15. [1.,50.] #103
 uniform float layer_fade_min; // =0. [0.,1.]
-uniform float layer_fade_max; // =6. [0.,1.]
+uniform float layer_fade_max; // =0.6 [0.,1.]
 
-uniform float displacement; // =.4 [0.,1.]
+uniform float displacement; // =.4 [0.,1.] #108
 
 uniform float line_fade_min; // =0.5 [0.,5.]
 uniform float line_fade_max; // =1.5 [0.,5.]
 uniform float line_r1; // =0.04 [0.,.1]
-uniform float line_r2; // =0.01 [0.,.1]
+uniform float line_r2; // =0.01 [0.,.1] #106
 
-uniform float sparkle_intensity; // =.005 [0.,0.1,.001]
+uniform float sparkle_intensity; // =.005 [0.,0.1,.001] #109
 uniform float sparkle_damping; // =20. [0., 100.]
 uniform float sparkle_pulse_amp; // =.4 [0.,1.]
-uniform float sparkle_pulse_freq; // =.5 [0.,25.]
+uniform float sparkle_pulse_freq; // =.5 [0.,25.] #107
 
 float N21(vec2 p) {
     vec3 a = fract(vec3(p.xyx) * vec3(213.897, 653.453, 253.098));

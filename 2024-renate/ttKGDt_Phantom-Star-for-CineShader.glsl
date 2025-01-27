@@ -27,18 +27,18 @@
 
 precision highp float;
 
-uniform float camera_rot_speed; // =1. [0.,6.]
-uniform float camera_pos_speed; // =3. [0.,25.]
+uniform float camera_rot_speed; // =1. [0.,6.] #102
+uniform float camera_pos_speed; // =3. [0.,25.] #103
 
 uniform vec3 box_color; // <color> =(0.01,0.011,0.012) [0.,0.25,0.01]
 uniform vec3 box_dim; // =(0.4,0.8,0.3)
 uniform float box_rot_xy; // =0.3
 uniform float box_rot_xz; // =0.1
-uniform vec3 box_offset; // =(5.,5.,16.) [0.,20.]
+uniform vec3 box_offset; // =(5.,5.,16.) [0.,20.] #106
 
-uniform vec3 flash_color; // <color> =(0.,.002,.005) [0.,.01,.001]
-uniform float flash_intensity; // =3. [0.,10.]
-uniform float flash_speed; // =24. [0.,50.]
+uniform vec3 flash_color; // <color> =(0.,.002,.005) [0.,.01,.001] #107
+uniform float flash_intensity; // =3. [0.,10.] #108
+uniform float flash_speed; // =24. [0.,50.] #109
 
 mat2 rot(float a) {
     float c = cos(a), s = sin(a);

@@ -25,15 +25,15 @@
 #define iDate vec4(1970.0, 1.0, 1.0, 0.0)
 #define iSampleRate 44100.0
 
-uniform float num_layers; // =10. [1, 25]
+uniform float num_layers; // =10. [1, 25] #102
 uniform vec2 hue_shift; // =(0.,0.)
-uniform float hue_shift_a; // =2345.2
+uniform float hue_shift_a; // =2345.2 
 uniform vec3 hue_shift_b; // =(.2,.3,.9)
-uniform float intensity; // =0.02 [0,0.15]
-uniform float shine; // =1000. [10, 1000]
-uniform float scale_a; // =20.
-uniform float scale_b; // =.5
-uniform float fade_a; // =1.
+uniform float intensity; // =0.02 [0,0.15] #103
+uniform float shine; // =1000. [10, 1000] #106
+uniform float scale_a; // =20. #107
+uniform float scale_b; // =.5 #108
+uniform float fade_a; // =1. #109
 uniform float fade_b; // =.9
 
 uniform float angle; // =0.67
