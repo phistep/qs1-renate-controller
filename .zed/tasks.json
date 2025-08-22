@@ -1,0 +1,34 @@
+[
+  {
+    "label": "Build Sketch",
+    "command": "arduino-cli compile --log --verbose --fqbn $FQBN $$ZED_RELATIVE_DIR",
+    "env": {
+      // "FQBN": "SparkFun:avr:promicro"
+      "FQBN": "arduino:avr:uno"
+    },
+    "shell": "system",
+    "tags": ["cpp-compile"]
+  },
+  {
+    "label": "Build & Upload Sketch",
+    "command": "setopt xtrace; env; arduino-cli compile -j1 --log --verbose --fqbn $FQBN --upload --port $PORT --verify $PWD/$ZED_RELATIVE_FILE",
+    "env": {
+      "PORT": "/dev/cu.usbmodem2101",
+      // "FQBN": "SparkFun:avr:promicro"
+      "FQBN": "arduino:avr:uno"
+    },
+    "shell": "system",
+    "tags": ["cpp-run"]
+  },
+  {
+    "label": "Serial Monitor",
+    "command": "arduino-cli monitor --log --fqbn $FQBN --port $PORT --timestamp",
+    "env": {
+      "PORT": "/dev/cu.usbmodem2101",
+      // "FQBN": "SparkFun:avr:promicro"
+      "FQBN": "arduino:avr:uno"
+    },
+    "shell": "system",
+    "tags": ["cpp-run"]
+  }
+]

@@ -48,3 +48,20 @@ brew install arduino-ide
 
 [sparkfun_pro_micro]: https://www.sparkfun.com/products/15795
 [instructables]: https://www.instructables.com/DIY-USB-Midi-Controller-With-Arduino-a-Beginners-G/
+
+
+## Manual Workflow
+
+https://arduino.github.io/arduino-cli/dev/getting-started/
+
+```sh
+brew install ardunio-cli
+```
+
+```sh
+% arduino-cli core update-index
+% ardunio-cli board list
+Port                            Protocol Type              Board Name FQBN Core
+/dev/cu.usbmodemMIDI1           serial   Serial Port (USB) Unknown
+% arduino-cli core install SparkFun:avr
+#
